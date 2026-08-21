@@ -31,10 +31,66 @@ jobs:
           npm init -y
           npm install @capacitor/core @capacitor/cli @capacitor/android @capacitor/splash-screen
 
-      # ===== 關鍵修正：使用新的 App ID 和名稱 =====
-      - name: 初始化 Capacitor (CreditC)
-        run: npx cap init "CreditC" "com.lielishail.creditc" --web-dir=.
+      # 關鍵步驟：建立 www 目錄並複製所有網頁文件
+      - name: 準備網頁文件到 www 目錄
+        run: |
+          mkdir -p www
+          # 複製所有可能存在的網頁文件，忽略錯誤（如果文件不存在）
+          cp index.html manifest.json sw.js *.png *.jpg *.ico www/ 2>/dev/null || true
+          # 確保 index.html 一定存在
+          if [ ! -f www/index.html ]; then echo "錯誤：找不到 index.html"; exit 1; fi
 
+      - name: 初始化 Capacitor（使用 www 目錄）
+        run: npx cap init "CreditC" "com.lielishail.creditc" --web-dir=www
+
+      - name: 加入 Android 平台
+        run: npx cap add android
+
+      # 覆蓋設定檔並同步（關閉啟動畫面）
+      - name: 修改 capacitor.config.json 並同步
+        run: |
+          echo '{
+            "appId": "com.lielishail.creditc",
+            "appName": "CreditC",
+            "webDir": "www",
+            "plugins": {
+              "SplashScreen": {
+                "launchShowDuration": 0,
+                "launchAutoHide": true,
+                "backgroundColor": "#eef4fa"
+              }
+            }
+          }' > capacitor.config.json
+          npx cap sync
+
+      - name: 快取 Gradle 依賴
+        uses: actions/cache@v5
+        with:
+          path: ~/.gradle/caches
+          key: ${{ runner.os }}-gradle-${{ hashFiles('android/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: 安裝 Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: 安裝 Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: 編譯 APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - name: 上傳 APK
+        uses: actions/upload-artifact@v5
+        with:
+          name: CreditC 信用卡App
+          path: android/app/build/outputs/apk/debug/app-debug.apk
       - name: 加入 Android 平台
         run: npx cap add android
 
