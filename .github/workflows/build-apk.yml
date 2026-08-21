@@ -26,10 +26,10 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-node-
 
-      - name: 初始化 npm 並安裝 Capacitor
+      - name: 初始化 npm 並安裝 Capacitor 與插件
         run: |
           npm init -y
-          npm install @capacitor/core @capacitor/cli @capacitor/android @capacitor/splash-screen
+          npm install @capacitor/core @capacitor/cli @capacitor/android @capacitor/splash-screen @capacitor/local-notifications @capacitor/assets
 
       - name: 準備網頁文件到 www 目錄
         run: |
@@ -59,6 +59,16 @@ jobs:
           }' > capacitor.config.json
           npx cap sync
 
+      # 🔥 新增：生成所有 Android 圖示（使用 @capacitor/assets）
+      - name: 產生 App 圖示（使用 icon-512.png）
+        run: |
+          # 確保 icon-512.png 存在，否則使用預設
+          if [ -f icon-512.png ]; then
+            npx capacitor-assets generate --android --iconBackgroundColor "#083b66" --iconBackgroundColorDark "#083b66"
+          else
+            echo "警告：找不到 icon-512.png，將使用 Capacitor 預設圖示"
+          fi
+
       - name: 快取 Gradle 依賴
         uses: actions/cache@v5
         with:
@@ -67,7 +77,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gradle-
 
-      # 🔥 關鍵修正：Java 版本從 17 改為 21，且升級 setup-java 到 v5
       - name: 安裝 Java 21
         uses: actions/setup-java@v5
         with:
