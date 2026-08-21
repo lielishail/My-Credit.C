@@ -62,12 +62,14 @@ jobs:
 
       # 🔥 生成所有 Android 圖示（使用 icon-512.png）
       - name: 產生 App 圖示
-        run: |
-          if [ -f icon-512.png ]; then
-            npx capacitor-assets generate --android --iconBackgroundColor "#083b66" --iconBackgroundColorDark "#083b66"
-          else
-            echo "警告：找不到 icon-512.png，將使用 Capacitor 預設圖示"
-          fi
+- name: 產生 App 圖示
+  run: |
+    if [ -f icon-512.png ]; then
+      echo "✅ 找到 icon-512.png，開始生成圖示..."
+      npx capacitor-assets generate --android --icon "icon-512.png" --iconBackgroundColor "#083b66" --iconBackgroundColorDark "#083b66"
+      echo "✅ 圖示生成完成"
+    else
+      echo "❌ 找不到 icon-512.png，將使用 Capacitor 預設圖示
 
       - name: 快取 Gradle 依賴
         uses: actions/cache@v5
