@@ -1,7 +1,7 @@
 {
-  "id": "/",
+  "id": "My-Credit-C",
   "name": "My Credit.C",
-  "short_name": "My Credit.C",
+  "short_name": "CreditC",
   "start_url": "./index.html",
   "display": "standalone",
   "orientation": "portrait",
