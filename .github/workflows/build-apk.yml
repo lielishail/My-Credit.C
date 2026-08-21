@@ -26,7 +26,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-node-
 
-      - name: 初始化 npm 並安裝 Capacitor 與相關插件
+      - name: 初始化 npm 並安裝 Capacitor
         run: |
           npm init -y
           npm install @capacitor/core @capacitor/cli @capacitor/android @capacitor/splash-screen @capacitor/local-notifications @capacitor/assets
@@ -37,13 +37,12 @@ jobs:
           cp index.html manifest.json sw.js *.png *.jpg *.ico www/ 2>/dev/null || true
           if [ ! -f www/index.html ]; then echo "錯誤：找不到 index.html"; exit 1; fi
 
-      - name: 初始化 Capacitor（使用正確的 App 名稱與 ID）
+      - name: 初始化 Capacitor
         run: npx cap init "Credit.C" "com.lielishail.creditc" --web-dir=www
 
       - name: 加入 Android 平台
         run: npx cap add android
 
-      # 覆蓋 capacitor.config.json（確保 appName 為 Credit.C，並關閉啟動畫面）
       - name: 修改 capacitor.config.json 並同步
         run: |
           echo '{
@@ -60,16 +59,16 @@ jobs:
           }' > capacitor.config.json
           npx cap sync
 
-      # 🔥 生成所有 Android 圖示（使用 icon-512.png）
+      # ===== 圖示生成（簡化版本，只使用 --icon 參數） =====
       - name: 產生 App 圖示
-- name: 產生 App 圖示
-  run: |
-    if [ -f icon-512.png ]; then
-      echo "✅ 找到 icon-512.png，開始生成圖示..."
-      npx capacitor-assets generate --android --icon "icon-512.png" --iconBackgroundColor "#083b66" --iconBackgroundColorDark "#083b66"
-      echo "✅ 圖示生成完成"
-    else
-      echo "❌ 找不到 icon-512.png，將使用 Capacitor 預設圖示
+        run: |
+          if [ -f icon512.png ]; then
+            echo "✅ 找到 icon-512.png，開始生成..."
+            npx capacitor-assets generate --android --icon "icon512.png"
+            echo "✅ 圖示生成完成"
+          else
+            echo "⚠️ 找不到 icon-512.png，將使用 Capacitor 預設圖示"
+          fi
 
       - name: 快取 Gradle 依賴
         uses: actions/cache@v5
@@ -97,5 +96,5 @@ jobs:
       - name: 上傳 APK
         uses: actions/upload-artifact@v5
         with:
-          name: Credit.C
+          name: Credit.C-信用卡App
           path: android/app/build/outputs/apk/debug/app-debug.apk
