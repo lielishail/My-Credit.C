@@ -26,7 +26,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-node-
 
-      - name: 初始化 npm 並安裝 Capacitor 與插件
+      - name: 初始化 npm 並安裝 Capacitor 與相關插件
         run: |
           npm init -y
           npm install @capacitor/core @capacitor/cli @capacitor/android @capacitor/splash-screen @capacitor/local-notifications @capacitor/assets
@@ -37,17 +37,18 @@ jobs:
           cp index.html manifest.json sw.js *.png *.jpg *.ico www/ 2>/dev/null || true
           if [ ! -f www/index.html ]; then echo "錯誤：找不到 index.html"; exit 1; fi
 
-      - name: 初始化 Capacitor
-        run: npx cap init "CreditC" "com.lielishail.creditc" --web-dir=www
+      - name: 初始化 Capacitor（使用正確的 App 名稱與 ID）
+        run: npx cap init "Credit.C" "com.lielishail.creditc" --web-dir=www
 
       - name: 加入 Android 平台
         run: npx cap add android
 
+      # 覆蓋 capacitor.config.json（確保 appName 為 Credit.C，並關閉啟動畫面）
       - name: 修改 capacitor.config.json 並同步
         run: |
           echo '{
             "appId": "com.lielishail.creditc",
-            "appName": "CreditC",
+            "appName": "Credit.C",
             "webDir": "www",
             "plugins": {
               "SplashScreen": {
@@ -59,10 +60,9 @@ jobs:
           }' > capacitor.config.json
           npx cap sync
 
-      # 🔥 新增：生成所有 Android 圖示（使用 @capacitor/assets）
-      - name: 產生 App 圖示（使用 icon-512.png）
+      # 🔥 生成所有 Android 圖示（使用 icon-512.png）
+      - name: 產生 App 圖示
         run: |
-          # 確保 icon-512.png 存在，否則使用預設
           if [ -f icon-512.png ]; then
             npx capacitor-assets generate --android --iconBackgroundColor "#083b66" --iconBackgroundColorDark "#083b66"
           else
@@ -95,5 +95,5 @@ jobs:
       - name: 上傳 APK
         uses: actions/upload-artifact@v5
         with:
-          name: CreditC 信用卡App
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: Credit.C
+          path: android/app/build/outputs/apk/debug/Credit.C.apk
