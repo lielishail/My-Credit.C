@@ -335,14 +335,198 @@ async function keepAwake(){try{if('wakeLock' in navigator && document.visibility
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){requestAppPermissions();keepAwake();checkNotifications()}});
 window.addEventListener('load',()=>{requestAppPermissions();keepAwake();updateNotifyBtnState()});
 render();applyLanguage(document.body);$('languageSelect').value=currentLang;checkNotifications();setInterval(checkNotifications,30000);
+
+// ================================================================
+//  🆕 通知設定與排程（完整實現）
+// ================================================================
+
 const NOTIF_SETTINGS_KEY = 'card-reminder-notif-settings-v1';
-function getNotifSettings() {...}
-function saveNotifSettings() {...}
-function loadNotifSettingsToUI() {...}
-function populateTimeSelectors() {...}
-async function scheduleAllNotifications() {...}
-async function testNotificationCapacitor() {...}
-function bindNotificationEvents() {...}
-function initNotifications() {...}
-window.addEventListener('load', initNotifications);
-</script></body></html>
+
+function getNotifSettings() {
+  const defaultSettings = { enabled: true, hour: 8, minute: 0 };
+  try {
+    const stored = JSON.parse(localStorage.getItem(NOTIF_SETTINGS_KEY));
+    if (stored) return { ...defaultSettings, ...stored };
+  } catch(e) {}
+  return defaultSettings;
+}
+
+function saveNotifSettings(settings) {
+  localStorage.setItem(NOTIF_SETTINGS_KEY, JSON.stringify(settings));
+}
+
+function loadNotifSettingsToUI() {
+  const s = getNotifSettings();
+  const enabledCheck = document.getElementById('notifEnabled');
+  const hourSel = document.getElementById('notifHour');
+  const minSel = document.getElementById('notifMinute');
+  if (enabledCheck) enabledCheck.checked = s.enabled;
+  if (hourSel) hourSel.value = s.hour;
+  if (minSel) minSel.value = s.minute;
+}
+
+function populateTimeSelectors() {
+  const hourSel = document.getElementById('notifHour');
+  if (hourSel) {
+    hourSel.innerHTML = '';
+    for (let i = 0; i < 24; i++) {
+      const opt = document.createElement('option');
+      opt.value = i;
+      opt.textContent = String(i).padStart(2, '0') + '時';
+      hourSel.appendChild(opt);
+    }
+  }
+  const minSel = document.getElementById('notifMinute');
+  if (minSel) {
+    minSel.innerHTML = '';
+    for (let i = 0; i < 60; i += 5) {
+      const opt = document.createElement('option');
+      opt.value = i;
+      opt.textContent = String(i).padStart(2, '0') + '分';
+      minSel.appendChild(opt);
+    }
+  }
+}
+
+async function scheduleAllNotifications() {
+  try {
+    if (!window.Capacitor || !window.Capacitor.isNativePlatform()) {
+      console.log('非 Capacitor 環境，跳過通知排程');
+      return;
+    }
+    const { LocalNotifications } = await import('@capacitor/local-notifications');
+    const settings = getNotifSettings();
+    if (!settings.enabled) {
+      await LocalNotifications.cancelAll();
+      console.log('通知已停用，取消所有排程');
+      return;
+    }
+    await LocalNotifications.cancelAll();
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const pending = cards.filter(c => !c.paid && c.dueDate);
+    if (pending.length === 0) {
+      console.log('無需排程的卡片');
+      return;
+    }
+    const perm = await LocalNotifications.requestPermissions();
+    if (perm.display !== 'granted') {
+      toast('請允許通知權限');
+      return;
+    }
+    const notifications = [];
+    for (const c of pending) {
+      const due = new Date(c.dueDate + 'T00:00:00');
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (due < today) continue;
+      const dayBefore = new Date(due);
+      dayBefore.setDate(dayBefore.getDate() - 1);
+      dayBefore.setHours(settings.hour, settings.minute, 0, 0);
+      const dueDay = new Date(due);
+      dueDay.setHours(settings.hour, settings.minute, 0, 0);
+      const nowMs = Date.now();
+      const scheduleIfFuture = (date, type) => {
+        if (date.getTime() > nowMs) {
+          const id = parseInt(c.id + (type === 'before' ? '1' : '2') + Math.random().toString().slice(2, 6));
+          const title = type === 'before'
+            ? `${c.category} ${c.name} (${c.last4}) 明天到期`
+            : `${c.category} ${c.name} (${c.last4}) 今天到期`;
+          const body = type === 'before'
+            ? `${money(c.amount, c.currency)} 明天到期，請確保餘額足夠`
+            : `${money(c.amount, c.currency)} 今天到期，請盡快還款`;
+          notifications.push({
+            id: id,
+            title: title,
+            body: body,
+            schedule: { at: date }
+          });
+        }
+      };
+      scheduleIfFuture(dayBefore, 'before');
+      scheduleIfFuture(dueDay, 'due');
+    }
+    if (notifications.length > 0) {
+      await LocalNotifications.schedule({ notifications });
+      console.log(`已排程 ${notifications.length} 則通知`);
+    } else {
+      console.log('沒有需要排程的未來通知');
+    }
+  } catch (e) {
+    console.error('排程通知失敗:', e);
+    toast('通知設定失敗，請重試');
+  }
+}
+
+async function testNotificationCapacitor() {
+  try {
+    if (!window.Capacitor || !window.Capacitor.isNativePlatform()) {
+      toast('僅在 App 中支援測試');
+      return;
+    }
+    const { LocalNotifications } = await import('@capacitor/local-notifications');
+    const perm = await LocalNotifications.requestPermissions();
+    if (perm.display !== 'granted') {
+      toast('請先允許通知權限');
+      return;
+    }
+    await LocalNotifications.schedule({
+      notifications: [{
+        id: Date.now(),
+        title: '測試通知',
+        body: '這是一則測試訊息，表示通知功能正常',
+        schedule: { at: new Date(Date.now() + 1000) }
+      }]
+    });
+    toast('測試通知已發送，請查看通知欄');
+  } catch(e) {
+    toast('測試失敗: ' + e.message);
+  }
+}
+
+function bindNotificationEvents() {
+  const saveBtn = document.getElementById('saveNotifSettings');
+  if (saveBtn) {
+    saveBtn.onclick = null;
+    saveBtn.onclick = async function() {
+      try {
+        const enabled = document.getElementById('notifEnabled').checked;
+        const hour = parseInt(document.getElementById('notifHour').value);
+        const minute = parseInt(document.getElementById('notifMinute').value);
+        saveNotifSettings({ enabled, hour, minute });
+        toast('通知設定已儲存');
+        await scheduleAllNotifications();
+      } catch(e) {
+        toast('儲存失敗: ' + e.message);
+      }
+    };
+  }
+  const testBtn = document.getElementById('testNotifBtn2');
+  if (testBtn) {
+    testBtn.onclick = null;
+    testBtn.onclick = testNotificationCapacitor;
+  }
+}
+
+function initNotifications() {
+  try {
+    populateTimeSelectors();
+    loadNotifSettingsToUI();
+    bindNotificationEvents();
+    if (window.Capacitor && window.Capacitor.isNativePlatform()) {
+      const settings = getNotifSettings();
+      if (settings.enabled) {
+        scheduleAllNotifications();
+      }
+    }
+  } catch(e) {
+    console.error('通知初始化失敗:', e);
+  }
+}
+
+// 執行初始化（不覆蓋原有 load 事件）
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initNotifications);
+} else {
+  initNotifications();
+}
