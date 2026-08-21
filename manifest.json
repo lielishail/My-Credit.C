@@ -1,16 +1,24 @@
 {
+  "id": "/",
   "name": "My Credit.C",
   "short_name": "CreditC",
   "start_url": "./index.html",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#0d1b2a",
   "theme_color": "#1b263b",
-  "description": "清楚掌握每張卡的到期日與還款提醒",
+  "description": "Clear tracking of card due dates and repayment reminders",
   "icons": [
     {
-      "src": "icon.jpg",
+      "src": "icon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon.png",
       "sizes": "512x512",
       "type": "image/png"
     }
-  ]
+  ],
+  "categories": ["finance", "utilities"]
 }
