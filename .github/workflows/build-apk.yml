@@ -31,22 +31,18 @@ jobs:
           npm init -y
           npm install @capacitor/core @capacitor/cli @capacitor/android @capacitor/splash-screen
 
-      # 關鍵步驟：建立 www 目錄並複製所有網頁文件
       - name: 準備網頁文件到 www 目錄
         run: |
           mkdir -p www
-          # 複製所有可能存在的網頁文件，忽略錯誤（如果文件不存在）
           cp index.html manifest.json sw.js *.png *.jpg *.ico www/ 2>/dev/null || true
-          # 確保 index.html 一定存在
           if [ ! -f www/index.html ]; then echo "錯誤：找不到 index.html"; exit 1; fi
 
-      - name: 初始化 Capacitor（使用 www 目錄）
+      - name: 初始化 Capacitor
         run: npx cap init "CreditC" "com.lielishail.creditc" --web-dir=www
 
       - name: 加入 Android 平台
         run: npx cap add android
 
-      # 覆蓋設定檔並同步（關閉啟動畫面）
       - name: 修改 capacitor.config.json 並同步
         run: |
           echo '{
@@ -71,11 +67,12 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gradle-
 
-      - name: 安裝 Java
-        uses: actions/setup-java@v4
+      # 🔥 關鍵修正：Java 版本從 17 改為 21，且升級 setup-java 到 v5
+      - name: 安裝 Java 21
+        uses: actions/setup-java@v5
         with:
           distribution: 'zulu'
-          java-version: '17'
+          java-version: '21'
 
       - name: 安裝 Android SDK
         uses: android-actions/setup-android@v3
