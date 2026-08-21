@@ -6,21 +6,21 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    # 加入這一行，強制所有 actions 在 Node.js 24 上執行，解決版本衝突
+    # 雙重保險：強制所有 JavaScript Actions 在 Node.js 24 上執行
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
       - name: 下載你的原始碼
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5  # 已升級至 v5
 
       - name: 安裝 Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6  # 已升級至 v6
         with:
-          node-version: 20
+          node-version: 24          # 🔥 關鍵修正：從 20 改為 24
 
       - name: 快取 npm 依賴（加速安裝）
-        uses: actions/cache@v4
+        uses: actions/cache@v5      # 已升級至 v5
         with:
           path: ~/.npm
           key: ${{ runner.os }}-node-${{ hashFiles('package-lock.json') }}
@@ -35,7 +35,7 @@ jobs:
       - name: 產生 capacitor.config.json (關閉啟動畫面)
         run: |
           echo '{
-            "appId": "com.lielishail.My-Credit.C.C",
+            "appId": "com.lielishail.My-Credit.C",
             "appName": "My Credit.C",
             "webDir": ".",
             "plugins": {
@@ -51,7 +51,7 @@ jobs:
         run: npx cap add android && npx cap sync
 
       - name: 快取 Gradle 依賴（加速編譯）
-        uses: actions/cache@v4
+        uses: actions/cache@v5      # 已升級至 v5
         with:
           path: ~/.gradle/caches
           key: ${{ runner.os }}-gradle-${{ hashFiles('android/gradle/wrapper/gradle-wrapper.properties') }}
@@ -74,7 +74,7 @@ jobs:
           ./gradlew assembleDebug --no-daemon
 
       - name: 上傳 APK 檔案
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5  # 已升級至 v5
         with:
           name: 我的信用卡App
           path: android/app/build/outputs/apk/debug/app-debug.apk
