@@ -47,6 +47,9 @@ dialog{width:min(calc(100% - 24px),560px);max-height:90vh;border:0;border-radius
 </div></div>
 <dialog id="editor"><div class="modalHead" id="modalTitle">新增還款</div><form class="form" id="form"><input type="hidden" id="id"><div class="field"><label>分類</label><input id="category" placeholder="例如 HSBC" required></div><div class="field"><label>信用卡名稱</label><input id="cardName" placeholder="例如 RED" required></div><div class="grid"><div class="field"><label>信用卡尾4碼</label><input id="last4" inputmode="numeric" maxlength="4" pattern="[0-9]{4}" placeholder="9999" required></div><div class="field"><label>幣別</label><select id="currency"><option>HKD</option><option>USD</option><option>CNY</option><option>JPY</option><option>EUR</option><option>GBP</option></select></div></div><div class="field"><label>應還金額</label><input id="amount" type="number" min="0" step="0.01" placeholder="9999.00" required></div><div class="grid"><div class="field"><label>今期結單</label><input id="statementDate" type="date" required></div><div class="field"><label>還款到期</label><input id="dueDate" type="date" required><div id="predictionHint" style="font-size:11px;color:#688096;margin:5px 2px 0"></div></div></div><div class="modalActions"><button type="button" id="cancel">取消</button><button class="save" type="submit">儲存</button></div></form></dialog><dialog id="limitDialog"><div class="modalHead" id="limitDialogTitle">設定信用額</div><form class="form" id="limitForm"><input type="hidden" id="limitCardId"><div class="field"><label>信用卡總額</label><input id="creditLimit" type="number" min="0" step="0.01" placeholder="50000" required></div><div class="field"><label>目前已使用額</label><input id="currentUsed" type="number" min="0" step="0.01" placeholder="例如 18000" required></div><div class="notice">上期未還會自動採用首頁該卡尚未還款金額；今期消費＝目前已使用額－上期未還。</div><div class="modalActions"><button type="button" id="cancelLimit">取消</button><button class="save" type="submit">儲存</button></div></form></dialog><dialog id="periodDialog"><div class="modalHead" id="periodTitle">上期總覽</div><div class="form"><div class="periodSummary"><div class="periodBox"><small>上期尚未還款</small><strong id="periodUnpaid">0.00</strong></div><div class="periodBox"><small>上期已還清</small><strong id="periodPaid">0.00</strong></div></div><div class="periodList" id="periodList"></div><div class="modalActions"><button type="button" id="closePeriod">關閉</button></div></div></dialog><div class="toast" id="toast"></div>
 <script>
+// ================================================================
+// 原有全部功能（完整保留）
+// ================================================================
 const KEY='card-reminder-v1',HISTORY_KEY='card-reminder-history-v1',LIMIT_KEY='card-reminder-limits-v1',THEME_KEY='card-reminder-theme-v1',LANG_KEY='card-reminder-language-v1';let cards=JSON.parse(localStorage.getItem(KEY)||'[]');let history=JSON.parse(localStorage.getItem(HISTORY_KEY)||'[]');let limits=JSON.parse(localStorage.getItem(LIMIT_KEY)||'{}');cards=cards.map(c=>({...c,statementDate:c.statementDate||c.nextStatementDate||''}));const $=id=>document.getElementById(id);const list=$('list'),dlg=$('editor');
 const money=(n,c)=>`${c} ${Number(n).toLocaleString('en-HK',{minimumFractionDigits:2,maximumFractionDigits:2})}`;
 function daysLeft(d){const a=new Date();a.setHours(0,0,0,0);const b=new Date(d+'T00:00:00');return Math.round((b-a)/86400000)}
@@ -257,7 +260,9 @@ $('languageSelect').onchange=e=>setLanguage(e.target.value);
 $('saveTheme').onclick=()=>{try{localStorage.setItem(THEME_KEY,JSON.stringify(pendingTheme));applyTheme(pendingTheme);toast(currentLang==='en'?'Appearance saved':'外觀設置已儲存');showPage('home')}catch(err){alert(currentLang==='en'?'Image is too large. Choose a smaller image.':'圖片仍然太大，請選擇較小圖片。')}};
 $('resetTheme').onclick=()=>{pendingTheme={type:'light',opacity:82,image:'',positionX:50,positionY:50,fit:'cover',moduleColor:'#edf3f7',listGreyOpacity:72};localStorage.setItem(THEME_KEY,JSON.stringify(pendingTheme));applyTheme(pendingTheme);updateThemePreview()};
 
-// ----- 升級後的通知與權限處理 -----
+// ================================================================
+// 通知與權限處理（原有，僅保留一份）
+// ================================================================
 function updateNotifyBtnState(){
   const btn=$('notifyBtn');
   if(!('Notification' in window)){
@@ -319,7 +324,9 @@ $('testNotifyBtn').onclick=async()=>{
   }
 };
 
+// toast 函數僅保留一份（此處為唯一定義）
 function toast(s){let t=$('toast');t.textContent=s;t.style.display='block';setTimeout(()=>t.style.display='none',2200)}
+
 function checkNotifications(){if(!('Notification'in window)||Notification.permission!=='granted')return;let now=new Date();if(now.getHours()!==8||now.getMinutes()<50)return;let today=now.toISOString().slice(0,10);cards.forEach(c=>{if(c.paid)return;let d=daysLeft(c.dueDate),kind=d===1?'before':d===0?'due':null;if(!kind)return;c.notified=c.notified||{};let key=today+kind;if(c.notified[key])return;let title=kind==='before'?`${c.category} ${c.name} (${c.last4}) 請預備還款`:`${c.category} ${c.name} (${c.last4}) 今日到期`;let body=kind==='before'?`${money(c.amount,c.currency)} 明天到期`:`應還金額：${money(c.amount,c.currency)}`;new Notification(title,{body,icon:''});c.notified[key]=true;localStorage.setItem(KEY,JSON.stringify(cards))})}
 async function requestAppPermissions(){
  try{
@@ -337,9 +344,8 @@ window.addEventListener('load',()=>{requestAppPermissions();keepAwake();updateNo
 render();applyLanguage(document.body);$('languageSelect').value=currentLang;checkNotifications();setInterval(checkNotifications,30000);
 
 // ================================================================
-//  🆕 通知設定與排程（完整實現）
+// 🆕 通知設定與排程（新增，無重複）
 // ================================================================
-
 const NOTIF_SETTINGS_KEY = 'card-reminder-notif-settings-v1';
 
 function getNotifSettings() {
@@ -524,9 +530,14 @@ function initNotifications() {
   }
 }
 
-// 執行初始化（不覆蓋原有 load 事件）
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initNotifications);
+// 等待 DOM 載入後執行通知初始化（不與原有 load 事件衝突）
+if (document.readyState === 'complete') {
+  setTimeout(initNotifications, 300);
 } else {
-  initNotifications();
+  window.addEventListener('load', function() {
+    setTimeout(initNotifications, 300);
+  });
 }
+</script>
+</body>
+</html>
