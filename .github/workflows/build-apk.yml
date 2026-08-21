@@ -1,11 +1,15 @@
 name: Build Capacitor APK
 
 on:
-  workflow_dispatch:    # 讓你可以在網頁上手動按按鈕觸發
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    # 加入這一行，強制所有 actions 在 Node.js 24 上執行，解決版本衝突
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
     steps:
       - name: 下載你的原始碼
         uses: actions/checkout@v4
@@ -15,15 +19,23 @@ jobs:
         with:
           node-version: 20
 
+      - name: 快取 npm 依賴（加速安裝）
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
       - name: 初始化 npm 並安裝 Capacitor
         run: |
           npm init -y
           npm install @capacitor/core @capacitor/cli @capacitor/android @capacitor/splash-screen
 
-      - name: 產生 Capacitor 設定檔 (關閉啟動畫面)
+      - name: 產生 capacitor.config.json (關閉啟動畫面)
         run: |
           echo '{
-            "appId": "com.lielishail.mycredit",
+            "appId": "com.lielishail.My-Credit.C.C",
             "appName": "My Credit.C",
             "webDir": ".",
             "plugins": {
@@ -38,7 +50,15 @@ jobs:
       - name: 同步 Capacitor 並加入 Android 平台
         run: npx cap add android && npx cap sync
 
-      - name: 安裝 Java (Android 編譯需要)
+      - name: 快取 Gradle 依賴（加速編譯）
+        uses: actions/cache@v4
+        with:
+          path: ~/.gradle/caches
+          key: ${{ runner.os }}-gradle-${{ hashFiles('android/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: 安裝 Java
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
@@ -51,9 +71,9 @@ jobs:
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug
+          ./gradlew assembleDebug --no-daemon
 
-      - name: 上傳編譯好的 APK 檔案
+      - name: 上傳 APK 檔案
         uses: actions/upload-artifact@v4
         with:
           name: 我的信用卡App
