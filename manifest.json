@@ -1,12 +1,16 @@
 {
-  "background_color": "#ffffff",
-  "dir": "ltr",
+  "name": "My Credit.C",
+  "short_name": "CreditC",
+  "start_url": "./index.html",
   "display": "standalone",
-  "name": "My-Credit.C l",
-  "orientation": "any",
-  "scope": "/",
-  "short_name": "lielishail.github",
-  "start_url": "/",
-  "theme_color": "#083b66",
-  "lang": "zh"
+  "background_color": "#0d1b2a",
+  "theme_color": "#1b263b",
+  "description": "清楚掌握每張卡的到期日與還款提醒",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
 }
