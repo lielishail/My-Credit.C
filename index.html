@@ -5,6 +5,13 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#083b66">
 <title>信用卡還款提醒</title>
+<link rel="manifest" href="manifest.json">
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js');
+  }
+</script>
+
 <style>
 :root{--navy:#083b66;--blue:#0f6cbd;--bg:#eef4fa;--ink:#1d2d3c;--muted:#667b8d;--line:#dce7f0;--red:#b93732;--orange:#a35b00;--green:#1d7a46}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:system-ui,-apple-system,"Noto Sans TC","Microsoft JhengHei",sans-serif;background:var(--bg);color:var(--ink)}
