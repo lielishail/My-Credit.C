@@ -59,12 +59,12 @@ jobs:
           }' > capacitor.config.json
           npx cap sync
 
-      # ===== 圖示生成（簡化版本，只使用 --icon 參數） =====
+      # ===== 修正：不使用 --icon 參數 =====
       - name: 產生 App 圖示
         run: |
-          if [ -f icon512.png ]; then
+          if [ -f icon-512.png ]; then
             echo "✅ 找到 icon-512.png，開始生成..."
-            npx capacitor-assets generate --android --icon "icon512.png"
+            npx capacitor-assets generate --android
             echo "✅ 圖示生成完成"
           else
             echo "⚠️ 找不到 icon-512.png，將使用 Capacitor 預設圖示"
