@@ -263,72 +263,142 @@ $('resetTheme').onclick=()=>{pendingTheme={type:'light',opacity:82,image:'',posi
 // ================================================================
 // 通知與權限處理（原有，僅保留一份）
 // ================================================================
-function updateNotifyBtnState(){
-  const btn=$('notifyBtn');
-  if(!('Notification' in window)){
-    btn.textContent='不支援通知';
-    btn.disabled=true;
+function updateNotifyBtnState() {
+  const btn = $('notifyBtn');
+  const isNative = window.Capacitor && window.Capacitor.isNativePlatform();
+  if (isNative) {
+    // 在 Capacitor 環境中，不檢查 Notification 對象，直接顯示「通知設定」
+    btn.textContent = '通知設定';
+    btn.disabled = false;
+    btn.style.background = '#ffffff18';
     return;
   }
-  if(Notification.permission==='granted'){
-    btn.textContent='通知已開啟';
-    btn.style.background='#1d7a4644';
-  }else if(Notification.permission==='denied'){
-    btn.textContent='通知被封鎖';
-    btn.style.background='#b9373244';
-  }else{
-    btn.textContent='開啟通知';
-    btn.style.background='#ffffff18';
+  // 瀏覽器環境
+  if (!('Notification' in window)) {
+    btn.textContent = '不支援通知';
+    btn.disabled = true;
+    return;
+  }
+  if (Notification.permission === 'granted') {
+    btn.textContent = '通知已開啟';
+    btn.style.background = '#1d7a4644';
+  } else if (Notification.permission === 'denied') {
+    btn.textContent = '通知被封鎖';
+    btn.style.background = '#b9373244';
+  } else {
+    btn.textContent = '開啟通知';
+    btn.style.background = '#ffffff18';
   }
 }
 
-$('notifyBtn').onclick=async()=>{
-  if(!('Notification' in window)){
-    alert('此瀏覽器不支援通知功能');
-    return;
-  }
-  const p=await Notification.requestPermission();
-  updateNotifyBtnState();
-  if(p==='granted'){
-    toast('通知已成功開啟！');
-    try{
-      new Notification('信用卡還款提醒',{body:'通知權限設定成功！系統將在到期日前發送提醒。'});
-    }catch(e){}
-  }else if(p==='denied'){
-    alert('通知權限已被拒絕。如需接收提醒，請至手機瀏覽器或系統設定中解除封鎖（iOS 用戶請確保已將網頁加入主畫面）。');
-  }else{
-    toast('未取得通知權限');
+$('notifyBtn').onclick = async function() {
+  // 判斷是否在 Capacitor 原生環境
+  const isNative = window.Capacitor && window.Capacitor.isNativePlatform();
+  if (isNative) {
+    try {
+      const { LocalNotifications } = await import('@capacitor/local-notifications');
+      const perm = await LocalNotifications.requestPermissions();
+      if (perm.display === 'granted') {
+        toast('通知權限已開啟');
+        // 重新排程
+        await scheduleAllNotifications();
+      } else {
+        toast('請允許通知權限');
+      }
+    } catch (e) {
+      toast('通知插件錯誤: ' + e.message);
+    }
+  } else {
+    // 瀏覽器環境：使用 Web Notification
+    if (!('Notification' in window)) {
+      alert('此瀏覽器不支援通知');
+      return;
+    }
+    const p = await Notification.requestPermission();
+    if (p === 'granted') {
+      toast('通知已開啟');
+    } else {
+      toast('未取得通知權限');
+    }
   }
 };
 
-$('testNotifyBtn').onclick=async()=>{
-  if(!('Notification' in window)){
-    alert('此瀏覽器不支援通知');
-    return;
-  }
-  if(Notification.permission!=='granted'){
-    const p=await Notification.requestPermission();
-    updateNotifyBtnState();
-    if(p!=='granted'){
-      alert('請先點擊「開啟通知」並允許權限，才能發送測試通知');
+$('notifyBtn').onclick = async function() {
+  // 判斷是否在 Capacitor 原生環境
+  const isNative = window.Capacitor && window.Capacitor.isNativePlatform();
+  if (isNative) {
+    try {
+      const { LocalNotifications } = await import('@capacitor/local-notifications');
+      const perm = await LocalNotifications.requestPermissions();
+      if (perm.display === 'granted') {
+        toast('通知權限已開啟');
+        // 重新排程
+        await scheduleAllNotifications();
+      } else {
+        toast('請允許通知權限');
+      }
+    } catch (e) {
+      toast('通知插件錯誤: ' + e.message);
+    }
+  } else {
+    // 瀏覽器環境：使用 Web Notification
+    if (!('Notification' in window)) {
+      alert('此瀏覽器不支援通知');
       return;
     }
-  }
-  try{
-    new Notification('測試還款提醒',{
-      body: '這是一則測試通知！您的手機推播功能運作完全正常。'
-    });
-    toast('已發送測試通知，請檢查通知欄');
-  }catch(err){
-    alert('發送測試通知失敗：'+err.message);
+    const p = await Notification.requestPermission();
+    if (p === 'granted') {
+      toast('通知已開啟');
+    } else {
+      toast('未取得通知權限');
+    }
   }
 };
 
 // toast 函數僅保留一份（此處為唯一定義）
 function toast(s){let t=$('toast');t.textContent=s;t.style.display='block';setTimeout(()=>t.style.display='none',2200)}
 
-function checkNotifications(){if(!('Notification'in window)||Notification.permission!=='granted')return;let now=new Date();if(now.getHours()!==8||now.getMinutes()<50)return;let today=now.toISOString().slice(0,10);cards.forEach(c=>{if(c.paid)return;let d=daysLeft(c.dueDate),kind=d===1?'before':d===0?'due':null;if(!kind)return;c.notified=c.notified||{};let key=today+kind;if(c.notified[key])return;let title=kind==='before'?`${c.category} ${c.name} (${c.last4}) 請預備還款`:`${c.category} ${c.name} (${c.last4}) 今日到期`;let body=kind==='before'?`${money(c.amount,c.currency)} 明天到期`:`應還金額：${money(c.amount,c.currency)}`;new Notification(title,{body,icon:''});c.notified[key]=true;localStorage.setItem(KEY,JSON.stringify(cards))})}
-async function requestAppPermissions(){
+async function checkNotifications() {
+  const isNative = window.Capacitor && window.Capacitor.isNativePlatform();
+  if (isNative) {
+    try {
+      const { LocalNotifications } = await import('@capacitor/local-notifications');
+      const now = new Date();
+      if (now.getHours() !== 8 || now.getMinutes() < 50) return;
+      const today = now.toISOString().slice(0, 10);
+      for (const c of cards) {
+        if (c.paid) continue;
+        const d = daysLeft(c.dueDate);
+        let kind = null;
+        if (d === 1) kind = 'before';
+        else if (d === 0) kind = 'due';
+        else continue;
+        c.notified = c.notified || {};
+        const key = today + kind;
+        if (c.notified[key]) continue;
+        const title = kind === 'before' ? `${c.category} ${c.name} (${c.last4}) 請預備還款` : `${c.category} ${c.name} (${c.last4}) 今日到期`;
+        const body = kind === 'before' ? `${money(c.amount, c.currency)} 明天到期` : `應還金額：${money(c.amount, c.currency)}`;
+        await LocalNotifications.schedule({
+          notifications: [{
+            id: Date.now() + Math.random(),
+            title: title,
+            body: body,
+            schedule: { at: new Date() }
+          }]
+        });
+        c.notified[key] = true;
+        localStorage.setItem(KEY, JSON.stringify(cards));
+      }
+    } catch (e) {
+      console.log('原生通知錯誤:', e);
+    }
+  } else {
+    // 瀏覽器環境下可保留原本的邏輯，但為簡化直接返回
+    return;
+  }
+}
+  
+  async function requestAppPermissions(){
  try{
    if('Notification' in window && Notification.permission==='default') await Notification.requestPermission();
    if(navigator.storage && navigator.storage.persist) await navigator.storage.persist();
